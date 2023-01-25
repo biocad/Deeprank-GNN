@@ -57,7 +57,7 @@ class GraphHDF5(object):
         for p in pdbs:
             base = os.path.basename(p)
             mol_name = os.path.splitext(base)[0]
-            base_name = mol_name.split('_')[0]
+            base_name = mol_name.split('_')[-2]
             if pssm_path is not None:
                 pssm[p] = self._get_pssm(
                     pssm_path, mol_name, base_name)
