@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 import numpy as np
 import shutil
 import torch
@@ -9,13 +9,18 @@ from pdb2sql import interface
 
 from .tools import BioWrappers, PSSM, BSA
 from .Graph import Graph
+from .crank_utils import get_chains_to_merge,merge_chains, parse_chains
 
+
+def merge_chains_one(source,dest,ab_chains,ag_chains):
+    ab_chains,ag_chains=get_chains_to_merge(source,ab_chains)
+    merge_chains(ab_chains,ag_chains,dest)
 
 class ResidueGraph(Graph):
 
-    def __init__(self, pdb=None, pssm=None,
+    def __init__(self, pdb=None,pssm=None,
                  contact_distance=8.5, internal_contact_distance=3,
-                 pssm_align='res', biopython=False):
+                 pssm_align='res', biopython=False,tmp_dir=Path('./tmp_dir')):
         """Class from which Residue features are computed
 
         Args:
@@ -29,7 +34,7 @@ class ResidueGraph(Graph):
 
         self.type = 'residue'
         self.pdb = pdb
-        self.name = os.path.splitext(os.path.basename(pdb))[0]
+        self.name = pdb.parent.stem
 
         if pssm is not None:
             self.pssm, self.ic = PSSM.PSSM_aligned(
@@ -72,7 +77,10 @@ class ResidueGraph(Graph):
         self.check_execs()
 
         # create the sqldb
-        db = interface(self.pdb)
+        ab_chains,ag_chains=(['A','B'], ['C']) if len(parse_chains(self.name))==2 else (['A'], ['B'])
+        tmp_dir.mkdir(parents=True,exist_ok=True)
+        merge_chains_one(self.pdb,tmp_dir / self.name,ab_chains,ag_chains)
+        db = interface(tmp_dir / self.name)
 
         # get the graphs
         t0 = time()
